@@ -20,10 +20,20 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o 
 # Frontend build stage
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
+
+# Copy package files
 COPY frontend/package*.json ./
-RUN npm install
+
+# Copy .env BEFORE npm install so Vite can read it
 COPY frontend/.env* ./
+
+# Install dependencies
+RUN npm install
+
+# Copy rest of frontend files
 COPY frontend/ ./
+
+# Build with environment variables
 RUN npm run build
 
 # MediaMTX download stage
