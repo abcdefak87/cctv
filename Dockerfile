@@ -1,20 +1,27 @@
-# RAF NET CCTV - Multi-stage Docker Build
-FROM node:20-alpine AS base
-
-# Install FFmpeg for recording
-RUN apk add --no-cache ffmpeg
+# RAF NET CCTV - Multi-stage Docker Build (Golang Backend)
 
 # Backend build stage
-FROM base AS backend-builder
+FROM golang:1.21-alpine AS backend-builder
 WORKDIR /app/backend
-COPY backend/package*.json ./
-RUN npm ci --production
+
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
+
+# Copy go mod files
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY backend/ ./
+
+# Build binary
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o server ./cmd/server
 
 # Frontend build stage
-FROM base AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
@@ -27,33 +34,37 @@ RUN wget https://github.com/bluenviron/mediamtx/releases/download/v1.9.0/mediamt
     chmod +x mediamtx
 
 # Final production image
-FROM base
+FROM alpine:latest
 WORKDIR /app
 
-# Install PM2 globally
-RUN npm install -g pm2
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates sqlite-libs tzdata ffmpeg
 
-# Copy backend
-COPY --from=backend-builder /app/backend/node_modules ./backend/node_modules
-COPY backend/ ./backend/
+# Copy backend binary
+COPY --from=backend-builder /app/backend/server ./backend/server
+COPY backend/.env.example ./backend/.env
 
 # Copy frontend build
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Copy MediaMTX
 COPY --from=mediamtx-downloader /tmp/mediamtx ./mediamtx/mediamtx
-COPY mediamtx/mediamtx.yml ./mediamtx/
+COPY mediamtx/mediamtx.yml ./mediamtx/mediamtx.yml
 
 # Create necessary directories
 RUN mkdir -p backend/data recordings logs && \
-    chmod 755 recordings
+    chmod 755 recordings && \
+    chmod +x backend/server mediamtx/mediamtx
 
 # Expose ports
-EXPOSE 3000 8888 8889 9997
+EXPOSE 3001 8888 8889 9997
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Start services with PM2
-CMD ["pm2-runtime", "deployment/ecosystem.config.cjs"]
+# Start script
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+CMD ["/docker-entrypoint.sh"]

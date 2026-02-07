@@ -8,7 +8,7 @@ services:
     container_name: rafnet-cctv
     restart: unless-stopped
     ports:
-      - "3000:3000"    # Backend API
+      - "3001:3001"    # Backend API (Golang)
       - "8888:8888"    # MediaMTX HLS
       - "8889:8889"    # MediaMTX WebRTC
       - "9997:9997"    # MediaMTX API
@@ -21,12 +21,13 @@ services:
       - ./backend/.env:/app/backend/.env:ro
       - ./mediamtx/mediamtx.yml:/app/mediamtx/mediamtx.yml:ro
     environment:
-      - NODE_ENV=production
       - TZ=Asia/Jakarta
+      - PORT=3001
+      - DB_PATH=/app/backend/data/cctv.db
     networks:
       - cctv-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,18 +38,17 @@ services:
     container_name: rafnet-cctv-nginx
     restart: unless-stopped
     ports:
-      - "800:80"       # Public HTTP
-      - "443:443"      # Public HTTPS (if SSL enabled)
+      - "8090:80"      # Public HTTP
+      - "8443:443"     # Public HTTPS (if SSL enabled)
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
-      - ./deployment/nginx-docker.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro  # Optional SSL certificates
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - cctv-app
     networks:
       - cctv-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost"]
       interval: 30s
       timeout: 10s
       retries: 3
