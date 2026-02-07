@@ -58,6 +58,51 @@
 - ✅ Delete camera
 - ✅ Toggle camera status
 
+### Area Management
+- ✅ Get all areas
+- ✅ Get single area
+- ✅ Create area
+- ✅ Update area
+- ✅ Delete area (with validation)
+
+### User Management
+- ✅ Get all users (admin)
+- ✅ Get single user
+- ✅ Create user
+- ✅ Update user
+- ✅ Delete user (with admin protection)
+- ✅ Change password
+
+### Settings Management
+- ✅ Get all settings
+- ✅ Get settings by category
+- ✅ Get single setting
+- ✅ Update/create setting
+- ✅ Delete setting
+- ✅ Bulk update settings
+
+### Stream Management
+- ✅ Get stream URL
+- ✅ HLS proxy
+- ✅ Stream statistics
+- ✅ Viewer tracking (start/stop)
+
+### Admin Dashboard
+- ✅ Dashboard statistics
+- ✅ System information
+- ✅ Recent activity logs
+- ✅ Camera health monitoring
+- ✅ Session cleanup
+- ✅ Database statistics
+
+### Feedback System
+- ✅ Submit feedback (public)
+- ✅ Get all feedback (admin)
+- ✅ Get single feedback
+- ✅ Update feedback status
+- ✅ Delete feedback
+- ✅ Feedback statistics
+
 ### Infrastructure
 - ✅ Database layer (SQLite)
 - ✅ Configuration management
@@ -70,21 +115,68 @@
 
 ### Public Endpoints
 ```
-GET    /health                    - Health check
-POST   /api/auth/login            - User login
-GET    /api/cameras/active        - Get enabled cameras
+GET    /health                         - Health check
+POST   /api/auth/login                 - User login
+GET    /api/cameras/active             - Get enabled cameras
+GET    /api/areas                      - Get all areas
+POST   /api/feedback                   - Submit feedback
+GET    /api/stream/:streamKey          - Get stream URL
+GET    /api/stream/hls/:streamKey/*    - HLS proxy
+GET    /api/stream/:streamKey/stats    - Stream statistics
+POST   /api/stream/:streamKey/start    - Start viewing session
+POST   /api/stream/:streamKey/stop     - Stop viewing session
 ```
 
 ### Protected Endpoints (Requires JWT)
 ```
-GET    /api/auth/verify           - Verify token
-POST   /api/auth/logout           - User logout
-GET    /api/cameras               - Get all cameras
-GET    /api/cameras/:id           - Get camera by ID
-POST   /api/cameras               - Create camera
-PUT    /api/cameras/:id           - Update camera
-DELETE /api/cameras/:id           - Delete camera
-PATCH  /api/cameras/:id/toggle    - Toggle camera status
+# Auth
+GET    /api/auth/verify                - Verify token
+POST   /api/auth/logout                - User logout
+
+# Cameras
+GET    /api/cameras                    - Get all cameras
+GET    /api/cameras/:id                - Get camera by ID
+POST   /api/cameras                    - Create camera
+PUT    /api/cameras/:id                - Update camera
+DELETE /api/cameras/:id                - Delete camera
+PATCH  /api/cameras/:id/toggle         - Toggle camera status
+
+# Areas
+GET    /api/areas/:id                  - Get area by ID
+POST   /api/areas                      - Create area
+PUT    /api/areas/:id                  - Update area
+DELETE /api/areas/:id                  - Delete area
+
+# Users
+GET    /api/users                      - Get all users
+GET    /api/users/:id                  - Get user by ID
+POST   /api/users                      - Create user
+PUT    /api/users/:id                  - Update user
+DELETE /api/users/:id                  - Delete user
+POST   /api/users/:id/change-password  - Change password
+
+# Settings
+GET    /api/settings                   - Get all settings
+GET    /api/settings/category/:cat     - Get settings by category
+GET    /api/settings/:key              - Get single setting
+PUT    /api/settings/:key              - Update setting
+DELETE /api/settings/:key              - Delete setting
+POST   /api/settings/bulk              - Bulk update settings
+
+# Admin
+GET    /api/admin/dashboard            - Dashboard statistics
+GET    /api/admin/system               - System information
+GET    /api/admin/activity             - Recent activity logs
+GET    /api/admin/camera-health        - Camera health status
+POST   /api/admin/cleanup-sessions     - Cleanup old sessions
+GET    /api/admin/database-stats       - Database statistics
+
+# Feedback
+GET    /api/feedback                   - Get all feedback
+GET    /api/feedback/stats             - Feedback statistics
+GET    /api/feedback/:id               - Get feedback by ID
+PATCH  /api/feedback/:id/status        - Update feedback status
+DELETE /api/feedback/:id               - Delete feedback
 ```
 
 ## 🧪 Testing
@@ -123,30 +215,28 @@ PATCH  /api/cameras/:id/toggle    - Toggle camera status
 
 ## ⚠️ TODO (Future Enhancements)
 
-### Additional Controllers
-- [ ] Area management
-- [ ] Stream management
-- [ ] Recording service
-- [ ] Admin dashboard
-- [ ] User management
-- [ ] Feedback system
-- [ ] Settings management
-
-### External Integrations
-- [ ] MediaMTX API client
-- [ ] Telegram bot
-- [ ] Saweria webhook
-
-### Security Enhancements
-- [ ] Rate limiting
-- [ ] CSRF protection
-- [ ] Input validation
+### Optional Features (Not Critical)
+- [ ] Recording service (start/stop/playback)
+- [ ] Sponsor management
+- [ ] Saweria webhook integration
+- [ ] Branding customization
 - [ ] API key management
 
+### External Integrations
+- [ ] MediaMTX API client (advanced features)
+- [ ] Telegram bot notifications
+- [ ] WebRTC signaling
+
+### Security Enhancements
+- [ ] Rate limiting middleware
+- [ ] CSRF protection
+- [ ] Advanced input validation
+- [ ] IP whitelisting
+
 ### Background Services
-- [ ] Camera health monitoring
-- [ ] Thumbnail generation
-- [ ] Session cleanup
+- [ ] Automated camera health checks
+- [ ] Thumbnail generation service
+- [ ] Automated session cleanup
 - [ ] Audit log rotation
 
 ## 🚀 Quick Start
