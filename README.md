@@ -49,11 +49,11 @@ Recording → FFmpeg → MP4 Segments → Playback API → Video Player
 ### Tech Stack
 
 **Backend:**
-- Node.js 20+ with ES modules
-- Fastify 4.28.1 (REST API)
-- SQLite with better-sqlite3 (database)
-- JWT authentication
-- FFmpeg (recording)
+- **Golang 1.21+** (migrated from Node.js)
+- **Fiber v2.52.0** (web framework)
+- **SQLite** with go-sqlite3 (database)
+- **JWT** authentication (golang-jwt/jwt)
+- **bcrypt** password hashing
 
 **Frontend:**
 - React 18.3.1
@@ -69,8 +69,8 @@ Recording → FFmpeg → MP4 Segments → Playback API → Video Player
 
 ## 📋 Prerequisites
 
-- **Ubuntu 20.04** (or compatible Linux)
-- **Node.js 20+**
+- **Ubuntu 20.04+** (or compatible Linux)
+- **Golang 1.21+**
 - **FFmpeg** (for recording)
 - **Nginx** (reverse proxy)
 - **Domain** (optional, for HTTPS)
@@ -116,10 +116,10 @@ cd rafnet-cctv
 
 ```bash
 cd backend
-npm install
 cp .env.example .env
 nano .env  # Edit configuration
-npm run setup-db
+go build -o bin/server cmd/server/main.go
+./bin/server
 ```
 
 #### 3. Frontend Setup
@@ -142,13 +142,13 @@ chmod +x mediamtx
 #### 5. Start Services
 
 ```bash
-# Install PM2
-npm install -g pm2
+# Start backend
+cd backend
+./bin/server
 
-# Start services
-pm2 start deployment/ecosystem.config.cjs
-pm2 save
-pm2 startup
+# Or use systemd service
+sudo systemctl start cctv-backend
+sudo systemctl enable cctv-backend
 ```
 
 #### 6. Configure Nginx
@@ -328,13 +328,18 @@ paths:
 
 ```
 rafnet-cctv/
-├── backend/              # Fastify API server
-│   ├── controllers/      # Route handlers
-│   ├── services/         # Business logic (MediaMTX, recording)
-│   ├── middleware/       # Auth, validation, security
-│   ├── routes/           # API routes
-│   ├── database/         # SQLite setup & migrations
-│   └── data/             # cctv.db file
+├── backend/              # Golang API server
+│   ├── cmd/server/       # Entry point
+│   ├── internal/
+│   │   ├── config/       # Configuration
+│   │   ├── database/     # Database connection
+│   │   ├── handlers/     # Route handlers (8 handlers)
+│   │   ├── middleware/   # Auth middleware
+│   │   ├── models/       # Data models
+│   │   └── routes/       # Route registration
+│   ├── pkg/logger/       # Logging utility
+│   ├── data/             # cctv.db file
+│   └── go.mod            # Dependencies
 ├── frontend/             # React SPA
 │   ├── src/
 │   │   ├── components/   # Reusable components
@@ -346,11 +351,8 @@ rafnet-cctv/
 │   ├── mediamtx          # Binary
 │   └── mediamtx.yml      # Configuration
 ├── deployment/           # Deployment configs
-│   ├── AAPANEL_QUICK_SETUP.md  # Deployment guide
-│   ├── aapanel-install.sh      # Installation script
-│   ├── update.sh               # Update script
-│   ├── nginx.conf              # Nginx config
-│   └── ecosystem.config.cjs    # PM2 config
+│   ├── nginx.conf        # Nginx config
+│   └── ...
 ├── recordings/           # Recording storage (auto-created)
 │   ├── camera1/
 │   ├── camera2/
@@ -422,21 +424,67 @@ cp /var/www/cctv/backend/data/cctv.db /backup/cctv_$(date +%Y%m%d).db
 
 - `GET /health` - Health check
 - `GET /api/cameras/active` - List enabled cameras
-- `GET /api/stream/:cameraId` - Get stream URLs
+- `GET /api/areas` - List all areas
+- `GET /api/stream/:streamKey` - Get stream URLs
+- `GET /api/stream/hls/:streamKey/*` - HLS proxy
+- `GET /api/stream/:streamKey/stats` - Stream statistics
+- `POST /api/stream/:streamKey/start` - Start viewing session
+- `POST /api/stream/:streamKey/stop` - Stop viewing session
 - `POST /api/feedback` - Submit feedback
-- `GET /hls/:cameraPath/*` - HLS streaming
 
 ### Admin (JWT Required)
 
+**Authentication:**
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
+- `GET /api/auth/verify` - Verify token
+
+**Cameras:**
 - `GET /api/cameras` - List all cameras
+- `GET /api/cameras/:id` - Get camera by ID
 - `POST /api/cameras` - Create camera
 - `PUT /api/cameras/:id` - Update camera
 - `DELETE /api/cameras/:id` - Delete camera
-- `GET /api/admin/dashboard` - Dashboard stats
-- `GET /api/users` - List users
-- `GET /api/playback/recordings/:cameraId` - List recordings
+- `PATCH /api/cameras/:id/toggle` - Toggle camera status
+
+**Areas:**
+- `GET /api/areas/:id` - Get area by ID
+- `POST /api/areas` - Create area
+- `PUT /api/areas/:id` - Update area
+- `DELETE /api/areas/:id` - Delete area
+
+**Users:**
+- `GET /api/users` - List all users
+- `GET /api/users/:id` - Get user by ID
+- `POST /api/users` - Create user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+- `POST /api/users/:id/change-password` - Change password
+
+**Settings:**
+- `GET /api/settings` - Get all settings
+- `GET /api/settings/category/:category` - Get settings by category
+- `GET /api/settings/:key` - Get single setting
+- `PUT /api/settings/:key` - Update setting
+- `DELETE /api/settings/:key` - Delete setting
+- `POST /api/settings/bulk` - Bulk update settings
+
+**Admin Dashboard:**
+- `GET /api/admin/dashboard` - Dashboard statistics
+- `GET /api/admin/system` - System information
+- `GET /api/admin/activity` - Recent activity logs
+- `GET /api/admin/camera-health` - Camera health status
+- `POST /api/admin/cleanup-sessions` - Cleanup old sessions
+- `GET /api/admin/database-stats` - Database statistics
+
+**Feedback:**
+- `GET /api/feedback` - Get all feedback
+- `GET /api/feedback/stats` - Feedback statistics
+- `GET /api/feedback/:id` - Get feedback by ID
+- `PATCH /api/feedback/:id/status` - Update feedback status
+- `DELETE /api/feedback/:id` - Delete feedback
+
+**Total: 44 endpoints (9 public, 35 protected)**
 
 ## 🐛 Troubleshooting
 
