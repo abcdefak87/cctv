@@ -13,6 +13,7 @@ import (
 func Setup(app *fiber.App, db *sql.DB, cfg *config.Config) {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db, cfg)
+	cameraHandler := handlers.NewCameraHandler(db, cfg)
 	
 	// API routes
 	api := app.Group("/api")
@@ -26,8 +27,13 @@ func Setup(app *fiber.App, db *sql.DB, cfg *config.Config) {
 	authMiddleware := middleware.AuthMiddleware(cfg.JWT.Secret)
 	auth.Get("/verify", authMiddleware, authHandler.Verify)
 	
-	// TODO: Add more routes here
-	// cameras := api.Group("/cameras", authMiddleware)
-	// areas := api.Group("/areas", authMiddleware)
-	// etc...
+	// Camera routes
+	cameras := api.Group("/cameras")
+	cameras.Get("/active", cameraHandler.GetActiveCameras) // Public
+	cameras.Get("/", authMiddleware, cameraHandler.GetAllCameras) // Admin
+	cameras.Get("/:id", authMiddleware, cameraHandler.GetCamera)
+	cameras.Post("/", authMiddleware, cameraHandler.CreateCamera)
+	cameras.Put("/:id", authMiddleware, cameraHandler.UpdateCamera)
+	cameras.Delete("/:id", authMiddleware, cameraHandler.DeleteCamera)
+	cameras.Patch("/:id/toggle", authMiddleware, cameraHandler.ToggleCamera)
 }
