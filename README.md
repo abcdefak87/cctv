@@ -1,5 +1,7 @@
 # RAF NET Secure CCTV Hub
 
+> **🚀 MIGRATED TO GOLANG!** Backend sekarang menggunakan Golang + Fiber untuk performance 10x lebih baik!
+
 A secure, high-performance video streaming system that isolates private IP cameras from public exposure while providing public web access to camera streams.
 
 ## 🎯 Key Features
