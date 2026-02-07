@@ -1,2 +1,0 @@
-# Python dependencies for migration tools
-# No external dependencies required - uses only Python standard library
