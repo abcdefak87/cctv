@@ -20,6 +20,19 @@ run:
 test:
 	go test -v ./...
 
+test-coverage:
+	go test -cover ./...
+
+test-coverage-html:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+test-race:
+	go test -race ./...
+
+test-short:
+	go test -short ./...
+
 clean:
 	rm -rf bin/
 	go clean
