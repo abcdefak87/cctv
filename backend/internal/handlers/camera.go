@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -200,15 +201,43 @@ func (h *CameraHandler) CreateCamera(c *fiber.Ctx) error {
 		Description    string `json:"description"`
 		Location       string `json:"location"`
 		GroupName      string `json:"group_name"`
-		AreaID         *int   `json:"area_id"`
-		Enabled        bool   `json:"enabled"`
+		AreaID         any    `json:"area_id"` // Accept string, int, or null
+		Enabled        any    `json:"enabled"` // Accept bool or int
 	}
 
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"success": false,
-			"message": "Invalid request body",
+			"message": "Invalid request body: " + err.Error(),
 		})
+	}
+
+	// Convert area_id to *int (handles string, int, or empty)
+	var areaID *int
+	switch v := req.AreaID.(type) {
+	case float64:
+		if v > 0 {
+			id := int(v)
+			areaID = &id
+		}
+	case string:
+		if v != "" {
+			var id int
+			if _, err := fmt.Sscanf(v, "%d", &id); err == nil && id > 0 {
+				areaID = &id
+			}
+		}
+	}
+
+	// Convert enabled to bool (handles both bool and int)
+	enabled := false
+	switch v := req.Enabled.(type) {
+	case bool:
+		enabled = v
+	case float64:
+		enabled = v != 0
+	case int:
+		enabled = v != 0
 	}
 
 	// Validation
@@ -234,7 +263,7 @@ func (h *CameraHandler) CreateCamera(c *fiber.Ctx) error {
 		                     group_name, area_id, enabled, stream_key, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, req.Name, req.PrivateRTSPURL, req.Description, req.Location,
-		req.GroupName, req.AreaID, req.Enabled, streamKey, time.Now())
+		req.GroupName, areaID, enabled, streamKey, time.Now())
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -265,15 +294,43 @@ func (h *CameraHandler) UpdateCamera(c *fiber.Ctx) error {
 		Description    string `json:"description"`
 		Location       string `json:"location"`
 		GroupName      string `json:"group_name"`
-		AreaID         *int   `json:"area_id"`
-		Enabled        bool   `json:"enabled"`
+		AreaID         any    `json:"area_id"` // Accept string, int, or null
+		Enabled        any    `json:"enabled"` // Accept bool or int
 	}
 
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"success": false,
-			"message": "Invalid request body",
+			"message": "Invalid request body: " + err.Error(),
 		})
+	}
+
+	// Convert area_id to *int
+	var areaID *int
+	switch v := req.AreaID.(type) {
+	case float64:
+		if v > 0 {
+			id := int(v)
+			areaID = &id
+		}
+	case string:
+		if v != "" {
+			var id int
+			if _, err := fmt.Sscanf(v, "%d", &id); err == nil && id > 0 {
+				areaID = &id
+			}
+		}
+	}
+
+	// Convert enabled to bool
+	enabled := false
+	switch v := req.Enabled.(type) {
+	case bool:
+		enabled = v
+	case float64:
+		enabled = v != 0
+	case int:
+		enabled = v != 0
 	}
 
 	result, err := h.db.Exec(`
@@ -282,7 +339,7 @@ func (h *CameraHandler) UpdateCamera(c *fiber.Ctx) error {
 		    group_name = ?, area_id = ?, enabled = ?, updated_at = ?
 		WHERE id = ?
 	`, req.Name, req.PrivateRTSPURL, req.Description, req.Location,
-		req.GroupName, req.AreaID, req.Enabled, time.Now(), id)
+		req.GroupName, areaID, enabled, time.Now(), id)
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{

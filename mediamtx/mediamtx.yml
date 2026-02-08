@@ -37,4 +37,9 @@ rtspAddress: :8554
 
 # Path configurations managed by backend
 paths:
+  test-1770580485:
+    source: rtsp://admin:Smansada1@103.118.175.245:555/Streaming/Channels/101
+    sourceOnDemand: yes
+    sourceOnDemandStartTimeout: 10s
+    sourceOnDemandCloseAfter: 10s
   all_others: {}

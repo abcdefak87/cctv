@@ -427,7 +427,7 @@ const VideoModal = memo(({ camera, onClose }) => {
         // Start viewer session
         const startTracking = async () => {
             try {
-                sessionId = await viewerService.startSession(camera.id);
+                sessionId = await viewerService.startSession(camera.stream_key);
             } catch (error) {
                 console.error('[VideoModal] Failed to start viewer session:', error);
             }

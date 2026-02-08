@@ -42,9 +42,10 @@ type SecurityConfig struct {
 }
 
 type MediaMTXConfig struct {
-	APIURL     string
-	HLSURLInternal string
-	HLSURLPublic   string
+	APIURL              string
+	HLSURLInternal      string
+	HLSURLPublic        string
+	PublicStreamBaseURL string
 }
 
 func Load() *Config {
@@ -76,9 +77,10 @@ func Load() *Config {
 			LockoutDurationMins: getEnvInt("LOCKOUT_DURATION_MINUTES", 30),
 		},
 		MediaMTX: MediaMTXConfig{
-			APIURL:         getEnv("MEDIAMTX_API_URL", "http://localhost:9997"),
-			HLSURLInternal: getEnv("MEDIAMTX_HLS_URL_INTERNAL", "http://localhost:8888"),
-			HLSURLPublic:   getEnv("PUBLIC_HLS_PATH", "/hls"),
+			APIURL:              getEnv("MEDIAMTX_API_URL", "http://localhost:9997"),
+			HLSURLInternal:      getEnv("MEDIAMTX_HLS_URL_INTERNAL", "http://localhost:8888"),
+			HLSURLPublic:        getEnv("PUBLIC_HLS_PATH", "/hls"),
+			PublicStreamBaseURL: getEnv("PUBLIC_STREAM_BASE_URL", "http://localhost:8090"),
 		},
 	}
 }

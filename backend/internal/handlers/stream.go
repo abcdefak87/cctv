@@ -54,8 +54,12 @@ func (h *StreamHandler) GetStreamURL(c *fiber.Ctx) error {
 		})
 	}
 
-	// Build stream URLs
-	baseURL := c.BaseURL()
+	// Build stream URLs using public base URL from config
+	baseURL := h.cfg.MediaMTX.PublicStreamBaseURL
+	if baseURL == "" {
+		// Fallback to request base URL if not configured
+		baseURL = c.BaseURL()
+	}
 	hlsURL := fmt.Sprintf("%s/api/stream/hls/%s/index.m3u8", baseURL, streamKey)
 	webrtcURL := fmt.Sprintf("%s/api/stream/webrtc/%s", baseURL, streamKey)
 
@@ -256,7 +260,10 @@ func (h *StreamHandler) GetAllStreams(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	streams := []map[string]interface{}{}
-	baseURL := c.BaseURL()
+	baseURL := h.cfg.MediaMTX.PublicStreamBaseURL
+	if baseURL == "" {
+		baseURL = c.BaseURL()
+	}
 
 	for rows.Next() {
 		var id int
@@ -272,9 +279,11 @@ func (h *StreamHandler) GetAllStreams(c *fiber.Ctx) error {
 			"id":         id,
 			"name":       name,
 			"stream_key": streamKey,
-			"hls_url":    baseURL + "/api/stream/hls/" + streamKey + "/index.m3u8",
-			"webrtc_url": baseURL + "/api/stream/webrtc/" + streamKey,
-			"status":     "online",
+			"streams": map[string]interface{}{
+				"hls":    baseURL + "/api/stream/hls/" + streamKey + "/index.m3u8",
+				"webrtc": baseURL + "/api/stream/webrtc/" + streamKey,
+			},
+			"status": "online",
 		})
 	}
 

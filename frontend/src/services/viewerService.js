@@ -31,26 +31,26 @@ class ViewerService {
 
     /**
      * Start a new viewer session for a camera
-     * @param {number} cameraId - The camera being watched
+     * @param {string} streamKey - The camera stream key
      * @returns {Promise<string>} Session ID
      */
-    async startSession(cameraId) {
+    async startSession(streamKey) {
         try {
-            const response = await apiClient.post('/api/viewer/start', { cameraId });
+            const response = await apiClient.post(`/api/stream/${streamKey}/start`);
             
             if (response.data.success) {
-                const sessionId = response.data.data.sessionId;
+                const sessionId = response.data.session_id;
                 
                 this.sessions.set(sessionId, {
                     sessionId,
-                    cameraId,
+                    streamKey,
                     startedAt: new Date()
                 });
 
                 // Start heartbeat if not already running
                 this.ensureHeartbeat();
 
-                console.log(`[ViewerService] Session started: ${sessionId} for camera ${cameraId}`);
+                console.log(`[ViewerService] Session started: ${sessionId} for stream ${streamKey}`);
                 return sessionId;
             }
             
@@ -65,6 +65,9 @@ class ViewerService {
      * Send heartbeat for all active sessions
      */
     async sendHeartbeats() {
+        // Heartbeat disabled - backend doesn't have this endpoint yet
+        return;
+        
         if (this.sessions.size === 0) return;
 
         const promises = [];
@@ -110,8 +113,10 @@ class ViewerService {
     async stopSession(sessionId) {
         if (!sessionId || !this.sessions.has(sessionId)) return;
 
+        const session = this.sessions.get(sessionId);
+        
         try {
-            await apiClient.post('/api/viewer/stop', { sessionId });
+            await apiClient.post(`/api/stream/${session.streamKey}/stop`);
             console.log(`[ViewerService] Session stopped: ${sessionId}`);
         } catch (error) {
             console.error('[ViewerService] Error stopping session:', error);
