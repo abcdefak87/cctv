@@ -300,3 +300,112 @@ func (h *SettingsHandler) BulkUpdateSettings(c *fiber.Ctx) error {
 		"message": "Settings updated successfully",
 	})
 }
+
+// GetMapCenter - Get map default center (public)
+func (h *SettingsHandler) GetMapCenter(c *fiber.Ctx) error {
+	var value string
+	err := h.db.QueryRow(`SELECT value FROM settings WHERE key = 'map_default_center'`).Scan(&value)
+	
+	if err != nil {
+		// Return default if not found
+		return c.JSON(fiber.Map{
+			"success": true,
+			"data": map[string]interface{}{
+				"latitude":  -7.150370,
+				"longitude": 112.034990,
+				"zoom":      13,
+				"name":      "Bojonegoro",
+			},
+		})
+	}
+
+	var mapCenter map[string]interface{}
+	if err := json.Unmarshal([]byte(value), &mapCenter); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to parse map center",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    mapCenter,
+	})
+}
+
+// GetLandingPageSettings - Get landing page settings (public)
+func (h *SettingsHandler) GetLandingPageSettings(c *fiber.Ctx) error {
+	// Return default landing page settings
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": map[string]interface{}{
+			"hero_badge":     "LIVE STREAMING 24 JAM",
+			"section_title":  "CCTV Publik",
+			"area_coverage":  "Saat ini area coverage kami baru mencakup <strong>Dander</strong> dan <strong>Tanjungharjo</strong>",
+		},
+	})
+}
+
+// GetPublicBranding - Get public branding settings
+func (h *SettingsHandler) GetPublicBranding(c *fiber.Ctx) error {
+	// Return default branding
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": map[string]interface{}{
+			"company_name":    "RAF NET",
+			"company_tagline": "CCTV Monitoring System",
+			"primary_color":   "#0ea5e9",
+			"logo_text":       "RN",
+		},
+	})
+}
+
+// GetSaweriaConfig - Get Saweria configuration (public)
+func (h *SettingsHandler) GetSaweriaConfig(c *fiber.Ctx) error {
+	// Return empty config for now
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": map[string]interface{}{
+			"enabled": false,
+			"link":    "",
+		},
+	})
+}
+
+// GetAdminBranding - Get admin branding settings
+func (h *SettingsHandler) GetAdminBranding(c *fiber.Ctx) error {
+	// Return settings in array format expected by frontend
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": []map[string]interface{}{
+			{"key": "company_name", "value": "RAF NET", "description": "Company name"},
+			{"key": "company_tagline", "value": "CCTV Monitoring System", "description": "Company tagline"},
+			{"key": "primary_color", "value": "#0ea5e9", "description": "Primary color"},
+			{"key": "logo_text", "value": "RN", "description": "Logo text (inisial)"},
+		},
+	})
+}
+
+// GetTimezone - Get timezone setting
+func (h *SettingsHandler) GetTimezone(c *fiber.Ctx) error {
+	// Return default timezone
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": map[string]interface{}{
+			"timezone": "Asia/Jakarta",
+		},
+	})
+}
+
+// GetSaweriaSettings - Get Saweria settings (admin)
+func (h *SettingsHandler) GetSaweriaSettings(c *fiber.Ctx) error {
+	// Return empty settings for now
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": map[string]interface{}{
+			"enabled":    false,
+			"stream_key": "",
+			"overlay_id": "",
+		},
+	})
+}

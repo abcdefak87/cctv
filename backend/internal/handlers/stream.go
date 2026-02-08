@@ -237,3 +237,49 @@ func (h *StreamHandler) StopViewing(c *fiber.Ctx) error {
 		"message": "Viewing session ended",
 	})
 }
+
+// GetAllStreams - Get all active streams
+func (h *StreamHandler) GetAllStreams(c *fiber.Ctx) error {
+	// Get all enabled cameras
+	rows, err := h.db.Query(`
+		SELECT id, name, stream_key, enabled
+		FROM cameras
+		WHERE enabled = 1
+		ORDER BY id ASC
+	`)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to fetch streams",
+		})
+	}
+	defer rows.Close()
+
+	streams := []map[string]interface{}{}
+	baseURL := c.BaseURL()
+
+	for rows.Next() {
+		var id int
+		var name, streamKey string
+		var enabled bool
+
+		err := rows.Scan(&id, &name, &streamKey, &enabled)
+		if err != nil {
+			continue
+		}
+
+		streams = append(streams, map[string]interface{}{
+			"id":         id,
+			"name":       name,
+			"stream_key": streamKey,
+			"hls_url":    baseURL + "/api/stream/hls/" + streamKey + "/index.m3u8",
+			"webrtc_url": baseURL + "/api/stream/webrtc/" + streamKey,
+			"status":     "online",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    streams,
+	})
+}

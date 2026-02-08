@@ -193,8 +193,8 @@ export default function FeedbackManagement() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[feedback.status].color}`}>
-                                            {statusConfig[feedback.status].label}
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[feedback.status]?.color || 'bg-gray-100 text-gray-700'}`}>
+                                            {statusConfig[feedback.status]?.label || feedback.status}
                                         </span>
                                     </div>
                                 </div>
@@ -239,8 +239,8 @@ export default function FeedbackManagement() {
                                         <p className="text-sm text-gray-500">{selectedFeedback.email}</p>
                                     )}
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig[selectedFeedback.status].color}`}>
-                                    {statusConfig[selectedFeedback.status].label}
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig[selectedFeedback.status]?.color || 'bg-gray-100 text-gray-700'}`}>
+                                    {statusConfig[selectedFeedback.status]?.label || selectedFeedback.status}
                                 </span>
                             </div>
 

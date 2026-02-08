@@ -88,11 +88,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	
 	return c.JSON(fiber.Map{
 		"success": true,
-		"token":   tokenString,
-		"user": fiber.Map{
-			"id":       user.ID,
-			"username": user.Username,
-			"role":     user.Role,
+		"data": fiber.Map{
+			"token": tokenString,
+			"user": fiber.Map{
+				"id":       user.ID,
+				"username": user.Username,
+				"role":     user.Role,
+			},
 		},
 	})
 }
@@ -123,5 +125,77 @@ func (h *AuthHandler) Verify(c *fiber.Ctx) error {
 			"username": username,
 			"role":     role,
 		},
+	})
+}
+
+// GetCSRF - Get CSRF token (placeholder - returns success for now)
+func (h *AuthHandler) GetCSRF(c *fiber.Ctx) error {
+	// For now, return a simple response
+	// In production, implement proper CSRF token generation
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"token": "csrf-token-placeholder",
+		},
+	})
+}
+
+// RefreshToken - Refresh JWT token
+func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	// Get token from header or cookie
+	token := c.Get("Authorization")
+	if token == "" {
+		token = c.Cookies("token")
+	}
+
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "No token provided",
+		})
+	}
+
+	// Remove "Bearer " prefix if present
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	// Parse token
+	claims := &jwt.MapClaims{}
+	parsedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(h.cfg.JWT.Secret), nil
+	})
+
+	if err != nil || !parsedToken.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid token",
+		})
+	}
+
+	// Extract user info
+	userID := int((*claims)["user_id"].(float64))
+	username := (*claims)["username"].(string)
+	role := (*claims)["role"].(string)
+
+	// Generate new token
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":  userID,
+		"username": username,
+		"role":     role,
+		"exp":      time.Now().Add(24 * time.Hour).Unix(),
+	})
+
+	tokenString, err := newToken.SignedString([]byte(h.cfg.JWT.Secret))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to generate token",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"token":   tokenString,
 	})
 }

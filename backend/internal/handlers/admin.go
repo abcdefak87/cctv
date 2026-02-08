@@ -19,12 +19,11 @@ func NewAdminHandler(db *sql.DB, cfg *config.Config) *AdminHandler {
 
 // GetDashboardStats - Get dashboard statistics
 func (h *AdminHandler) GetDashboardStats(c *fiber.Ctx) error {
-	stats := make(map[string]interface{})
-
 	// Total cameras
-	var totalCameras, activeCameras int
+	var totalCameras, activeCameras, offlineCameras int
 	h.db.QueryRow("SELECT COUNT(*) FROM cameras").Scan(&totalCameras)
 	h.db.QueryRow("SELECT COUNT(*) FROM cameras WHERE enabled = 1").Scan(&activeCameras)
+	offlineCameras = totalCameras - activeCameras
 
 	// Total users
 	var totalUsers int
@@ -55,19 +54,39 @@ func (h *AdminHandler) GetDashboardStats(c *fiber.Ctx) error {
 	var totalRecordingSize int64
 	h.db.QueryRow("SELECT COUNT(*), COALESCE(SUM(file_size), 0) FROM recordings").Scan(&totalRecordings, &totalRecordingSize)
 
-	stats["cameras"] = map[string]interface{}{
-		"total":  totalCameras,
-		"active": activeCameras,
-	}
-	stats["users"] = totalUsers
-	stats["areas"] = totalAreas
-	stats["viewers"] = map[string]interface{}{
-		"active": activeViewers,
-		"today":  viewsToday,
-	}
-	stats["recordings"] = map[string]interface{}{
-		"count": totalRecordings,
-		"size":  totalRecordingSize,
+	// Build response in format expected by frontend
+	stats := fiber.Map{
+		"summary": fiber.Map{
+			"totalCameras":    totalCameras,
+			"activeCameras":   activeCameras,
+			"offlineCameras":  offlineCameras,
+			"totalAreas":      totalAreas,
+			"totalUsers":      totalUsers,
+			"activeViewers":   activeViewers,
+			"totalRecordings": totalRecordings,
+		},
+		"cameraStatusBreakdown": fiber.Map{
+			"online":  activeCameras,
+			"offline": offlineCameras,
+			"total":   totalCameras,
+		},
+		"viewers": fiber.Map{
+			"active": activeViewers,
+			"today":  viewsToday,
+		},
+		"recordings": fiber.Map{
+			"count": totalRecordings,
+			"size":  totalRecordingSize,
+		},
+		"system": fiber.Map{
+			"totalMem": int64(8 * 1024 * 1024 * 1024), // 8GB placeholder
+			"freeMem":  int64(4 * 1024 * 1024 * 1024), // 4GB placeholder
+			"cpuLoad":  10, // 10% placeholder
+			"cpuModel": "Unknown CPU", // Placeholder
+		},
+		"streams":     []interface{}{}, // Empty for now
+		"recentLogs":  []interface{}{}, // Empty for now
+		"mtxConnected": true, // Assume connected for now
 	}
 
 	return c.JSON(fiber.Map{
@@ -78,11 +97,18 @@ func (h *AdminHandler) GetDashboardStats(c *fiber.Ctx) error {
 
 // GetSystemInfo - Get system information
 func (h *AdminHandler) GetSystemInfo(c *fiber.Ctx) error {
-	info := map[string]interface{}{
+	// Get basic system info
+	// Note: For production, use a proper system monitoring library
+	info := fiber.Map{
 		"version":    "1.0.0",
 		"go_version": "1.21",
 		"database":   "SQLite",
 		"uptime":     time.Since(time.Now()).String(), // TODO: Track actual uptime
+		// Memory info (placeholder values for now)
+		"totalMem": int64(8 * 1024 * 1024 * 1024), // 8GB placeholder
+		"freeMem":  int64(4 * 1024 * 1024 * 1024), // 4GB placeholder
+		"cpuLoad":  10, // 10% placeholder
+		"cpuModel": "Unknown CPU", // Placeholder
 	}
 
 	return c.JSON(fiber.Map{

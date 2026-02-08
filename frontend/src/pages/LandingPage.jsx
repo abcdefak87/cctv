@@ -2411,7 +2411,7 @@ function Navbar({ cameraCount, branding, layoutMode, onLayoutToggle }) {
                         </span>
                     </div>
                     
-                    {/* Right - Layout Mode & Theme Toggle */}
+                    {/* Right - Layout Mode & Theme Toggle & Login */}
                     <div className="flex items-center gap-2">
                         {/* Layout Mode Toggle */}
                         <button
@@ -2432,6 +2432,17 @@ function Navbar({ cameraCount, branding, layoutMode, onLayoutToggle }) {
                         >
                             {isDark ? <Icons.Sun /> : <Icons.Moon />}
                         </button>
+                        
+                        {/* Admin Login Button */}
+                        <a
+                            href="/admin/login"
+                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white font-medium hover:from-sky-600 hover:to-blue-700 transition-all shadow-lg shadow-sky-500/30 flex items-center gap-2"
+                            title="Admin Login"
+                            aria-label="Login Admin"
+                        >
+                            <Icons.Shield />
+                            <span className="hidden sm:inline">Admin</span>
+                        </a>
                     </div>
                 </div>
             </div>

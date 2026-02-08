@@ -137,7 +137,7 @@ function SponsorManagement() {
         setFormData({
             ...formData,
             package: pkg,
-            price: packages[pkg].price
+            price: packages[pkg]?.price || 0
         });
     };
 
@@ -204,7 +204,7 @@ function SponsorManagement() {
 
             {/* Package Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {Object.entries(packages).map(([key, pkg]) => (
+                {Object.entries(packages).filter(([, pkg]) => pkg).map(([key, pkg]) => (
                     <div key={key} className="bg-dark-800/90 backdrop-blur-md rounded-xl p-4 border border-dark-700/50">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className={`text-lg font-semibold text-${pkg.color}-400`}>
@@ -414,7 +414,7 @@ function SponsorManagement() {
                                         onChange={(e) => handlePackageChange(e.target.value)}
                                         className="w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-500"
                                     >
-                                        {Object.entries(packages).map(([key, pkg]) => (
+                                        {Object.entries(packages).filter(([, pkg]) => pkg).map(([key, pkg]) => (
                                             <option key={key} value={key}>
                                                 {pkg.name} - Rp {pkg.price.toLocaleString('id-ID')}/bulan
                                             </option>
@@ -521,17 +521,19 @@ function SponsorManagement() {
                             </div>
 
                             {/* Package Features Preview */}
-                            <div className="bg-dark-900/50 rounded-lg p-4">
-                                <p className="text-sm text-gray-400 mb-2">Fitur paket {packages[formData.package].name}:</p>
-                                <ul className="text-sm text-gray-300 space-y-1">
-                                    {packages[formData.package].features.map((feature, i) => (
-                                        <li key={i} className="flex items-start gap-2">
-                                            <span className="text-green-400 mt-0.5">✓</span>
-                                            <span>{feature}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                            {packages[formData.package] && (
+                                <div className="bg-dark-900/50 rounded-lg p-4">
+                                    <p className="text-sm text-gray-400 mb-2">Fitur paket {packages[formData.package].name}:</p>
+                                    <ul className="text-sm text-gray-300 space-y-1">
+                                        {packages[formData.package].features.map((feature, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                                <span className="text-green-400 mt-0.5">✓</span>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
                             <div className="flex gap-3 pt-4">
                                 <button

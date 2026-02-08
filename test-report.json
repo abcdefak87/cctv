@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-02-08T12:04:08.929Z",
+  "summary": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "warnings": 0,
+    "networkErrors": 2,
+    "total": 2
+  },
+  "errors": [],
+  "warnings": [],
+  "networkErrors": [
+    {
+      "type": "network.failed",
+      "url": "http://localhost:8090/health",
+      "method": "HEAD",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "type": "network.failed",
+      "url": "http://localhost:8090/health",
+      "method": "HEAD",
+      "error": "net::ERR_ABORTED"
+    }
+  ]
+}
