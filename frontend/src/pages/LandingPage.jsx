@@ -20,22 +20,21 @@ import { shouldDisableAnimations } from '../utils/animationControl';
 import { getGlobalStreamInitQueue, shouldUseQueuedInit } from '../utils/streamInitQueue';
 import { getApiUrl } from '../config/config.js';
 import { takeSnapshot as takeSnapshotUtil } from '../utils/snapshotHelper';
-// Skeleton loaders
+// UI Components
 import { GridSkeleton, CameraCardSkeleton } from '../components/ui/Skeleton';
-// Empty states
 import { NoSearchResultsEmptyState, NoDataWithFilterEmptyState } from '../components/ui/EmptyState';
-// Feedback widget
+import { Button } from '../components/ui/Button';
+import { Badge, LiveBadge, StatusBadge } from '../components/ui/Badge';
+import { SearchInput } from '../components/ui/Input';
+import { Tooltip } from '../components/ui/Tooltip';
+import { InlineLoader } from '../components/ui/Spinner';
+// Widgets
 import FeedbackWidget from '../components/FeedbackWidget';
-// Saweria Support
 import SaweriaSupport from '../components/SaweriaSupport';
-// Saweria Leaderboard
 import SaweriaLeaderboard from '../components/SaweriaLeaderboard';
-// Codec Badge
 import CodecBadge from '../components/CodecBadge';
 import { canPlayCodec } from '../utils/codecSupport';
-// Camera Thumbnail
 import CameraThumbnail from '../components/CameraThumbnail';
-// Layout components
 import LandingPageSimple from '../components/LandingPageSimple';
 // Map view - lazy loaded for performance
 const MapView = lazy(() => import('../components/MapView'));
@@ -309,6 +308,14 @@ const CameraCard = memo(function CameraCard({ camera, onClick, onAddMulti, inMul
     const isTunnel = camera.is_tunnel === 1;
     const disableAnimations = shouldDisableAnimations();
     
+    // Preload stream on hover
+    const handleMouseEnter = useCallback(() => {
+        if (!isMaintenance && !isOffline && camera.streams?.hls) {
+            // Trigger preload by making a HEAD request
+            fetch(camera.streams.hls, { method: 'HEAD' }).catch(() => {});
+        }
+    }, [camera.streams?.hls, isMaintenance, isOffline]);
+    
     // Pre-computed styles to avoid recalculation on each render
     const cardStyle = isMaintenance 
         ? 'ring-red-500/50 hover:ring-red-500' 
@@ -333,19 +340,20 @@ const CameraCard = memo(function CameraCard({ camera, onClick, onAddMulti, inMul
     const hoverTransform = disableAnimations ? '' : 'hover:-translate-y-1';
     
     return (
-        <div className={`relative rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-lg ring-1 ${transitionClass} ${hoverTransform} group/card ${cardStyle}`}>
-            {/* Multi-view button - simplified for low-end */}
-            <button
-                onClick={(e) => { e.stopPropagation(); onAddMulti(); }}
-                className={`absolute top-3 right-3 z-30 p-2.5 rounded-xl shadow-lg ${
-                    inMulti 
-                        ? 'bg-emerald-500 text-white' 
-                        : 'bg-white/90 dark:bg-gray-800/90 text-gray-600 dark:text-gray-300'
-                } ${disableAnimations ? '' : 'transition-colors hover:bg-sky-500 hover:text-white'}`}
-                title={inMulti ? 'Hapus dari Multi-View' : 'Tambah ke Multi-View'}
-            >
-                {inMulti ? <Icons.Check /> : <Icons.Plus />}
-            </button>
+        <div onMouseEnter={handleMouseEnter} className={`relative rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-xl hover:shadow-2xl ring-1 ${transitionClass} ${hoverTransform} group/card ${cardStyle}`}>
+            {/* Multi-view button */}
+            <Tooltip content={inMulti ? 'Hapus dari Multi-View' : 'Tambah ke Multi-View'} position="left">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onAddMulti(); }}
+                    className={`absolute top-3 right-3 z-30 p-2.5 rounded-xl shadow-lg backdrop-blur-sm ${
+                        inMulti 
+                            ? 'bg-emerald-500 text-white ring-2 ring-emerald-400' 
+                            : 'bg-white/95 dark:bg-gray-800/95 text-gray-600 dark:text-gray-300 hover:bg-sky-500 hover:text-white hover:ring-2 hover:ring-sky-400'
+                    } ${disableAnimations ? '' : 'transition-all duration-200 active:scale-95'}`}
+                >
+                    {inMulti ? <Icons.Check /> : <Icons.Plus />}
+                </button>
+            </Tooltip>
             
             {/* Video thumbnail area */}
             <div onClick={onClick} className={`aspect-video relative cursor-pointer overflow-hidden ${bgStyle}`}>
@@ -360,57 +368,39 @@ const CameraCard = memo(function CameraCard({ camera, onClick, onAddMulti, inMul
                 
                 {/* Play overlay - only for online cameras, disabled on low-end */}
                 {!isMaintenance && !isOffline && !disableAnimations && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 bg-black/40 transition-opacity">
-                        <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center text-sky-500 shadow-xl">
-                            <Icons.Play />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 bg-gradient-to-t from-black/60 via-black/30 to-transparent transition-all duration-300">
+                        <div className="w-16 h-16 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-sky-500 shadow-2xl transform group-hover/card:scale-110 transition-transform duration-300">
+                            <Icons.Play className="ml-1" />
                         </div>
                     </div>
                 )}
                 
                 {/* Status badges - LIVE with Tunnel indicator and Recording */}
-                <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                <div className="absolute top-3 left-3 flex items-center gap-2">
                     {isMaintenance ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-600/90 text-white text-[10px] font-bold shadow-lg">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63" />
-                            </svg>
-                            PERBAIKAN
-                        </span>
+                        <StatusBadge status="maintenance" />
                     ) : isOffline ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-600/90 text-white text-[10px] font-bold shadow-lg">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072"/>
-                            </svg>
-                            OFFLINE
-                        </span>
+                        <StatusBadge status="offline" />
                     ) : (
                         <>
-                            {/* LIVE badge */}
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/90 text-white text-[10px] font-bold shadow-lg">
-                                <span className="relative flex h-1.5 w-1.5">
-                                    {!disableAnimations && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>}
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                                </span>
-                                LIVE
-                            </span>
-                            {/* Recording badge - shown if camera is recording */}
+                            <LiveBadge />
                             {camera.is_recording && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-600/90 text-white text-[10px] font-bold shadow-lg" title="Sedang merekam">
-                                    <span className="relative flex h-1.5 w-1.5">
-                                        {!disableAnimations && <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>}
-                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                                <Badge variant="danger" size="sm" pulse>
+                                    <span className="relative flex h-2 w-2 mr-1">
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                                     </span>
                                     REC
-                                </span>
+                                </Badge>
                             )}
-                            {/* Tunnel badge - shown next to LIVE if tunnel connection */}
                             {isTunnel && (
-                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-500/90 text-white text-[10px] font-bold shadow-lg" title="Koneksi Tunnel - mungkin kurang stabil">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0"/>
-                                    </svg>
-                                    TUNNEL
-                                </span>
+                                <Tooltip content="Koneksi Tunnel - mungkin kurang stabil" position="bottom">
+                                    <Badge variant="warning" size="sm">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0"/>
+                                        </svg>
+                                        TUNNEL
+                                    </Badge>
+                                </Tooltip>
                             )}
                         </>
                     )}
@@ -419,8 +409,8 @@ const CameraCard = memo(function CameraCard({ camera, onClick, onAddMulti, inMul
                 {/* Offline indicator at bottom left */}
                 {isOffline && !isMaintenance && (
                     <div className="absolute bottom-3 left-3">
-                        <span className="px-2 py-1 rounded-lg bg-gray-800/80 text-gray-300 text-[10px] font-medium">
-                            Tidak tersedia
+                        <span className="px-2.5 py-1.5 rounded-lg bg-gray-800/80 backdrop-blur-sm text-gray-300 text-xs font-medium shadow-lg">
+                            ⚠️ Tidak tersedia
                         </span>
                     </div>
                 )}
@@ -428,8 +418,8 @@ const CameraCard = memo(function CameraCard({ camera, onClick, onAddMulti, inMul
                 {/* Area badge */}
                 {camera.area_name && (
                     <div className={`absolute bottom-3 ${isOffline && !isMaintenance ? 'right-3' : 'left-3'}`}>
-                        <span className="px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium">
-                            {camera.area_name}
+                        <span className="px-2.5 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm text-white text-xs font-medium shadow-lg">
+                            📍 {camera.area_name}
                         </span>
                     </div>
                 )}
@@ -659,9 +649,17 @@ function VideoPopup({ camera, onClose }) {
     const [isAutoRetrying, setIsAutoRetrying] = useState(false);
     const [consecutiveFailures, setConsecutiveFailures] = useState(0);
     const [showTroubleshooting, setShowTroubleshooting] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
     
     const url = camera.streams?.hls;
     const deviceTier = detectDeviceTier();
+
+    // Trigger fade-in animation
+    useEffect(() => {
+        requestAnimationFrame(() => {
+            setIsVisible(true);
+        });
+    }, []);
 
     // Error messages berdasarkan tipe - sama seperti MapView
     const getErrorInfo = () => {
@@ -1218,29 +1216,31 @@ function VideoPopup({ camera, onClose }) {
     const disableAnimations = shouldDisableAnimations();
 
     return (
-        <div ref={outerWrapperRef} className={`fixed inset-0 z-[9999] ${isFullscreen ? 'bg-black dark:bg-black' : 'flex items-center justify-center bg-black/95 dark:bg-black/95 p-2 sm:p-4'}`} onClick={onClose}>
-            <div ref={modalRef} className={`relative bg-white dark:bg-gray-900 overflow-hidden shadow-2xl flex flex-col ${isFullscreen ? 'w-full h-full' : 'w-full max-w-5xl rounded-2xl border border-gray-200 dark:border-gray-800'}`} style={isFullscreen ? {} : { maxHeight: 'calc(100vh - 16px)' }} onClick={(e) => e.stopPropagation()}>
+        <div ref={outerWrapperRef} className={`fixed inset-0 z-[9999] transition-all duration-300 ${isFullscreen ? 'bg-black dark:bg-black' : 'flex items-center justify-center backdrop-blur-xl bg-white/30 dark:bg-black/30 p-2 sm:p-4'} ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onClose}>
+            <div ref={modalRef} className={`relative bg-white dark:bg-gray-900 overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${isFullscreen ? 'w-full h-full' : 'w-full max-w-5xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50'} ${isVisible ? 'scale-100' : 'scale-95'}`} style={isFullscreen ? {} : { maxHeight: 'calc(100vh - 16px)' }} onClick={(e) => e.stopPropagation()}>
                 
                 {/* Header Info - di atas video (hide in fullscreen) */}
                 {!isFullscreen && (
-                    <div className="p-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <h3 className="text-gray-900 dark:text-white font-bold text-sm sm:text-base truncate">{camera.name}</h3>
-                                {camera.video_codec && (
-                                    <CodecBadge codec={camera.video_codec} size="sm" showWarning={true} />
-                                )}
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/50">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <h3 className="text-gray-900 dark:text-white font-bold text-base sm:text-lg truncate">{camera.name}</h3>
+                                    {camera.video_codec && (
+                                        <CodecBadge codec={camera.video_codec} size="sm" showWarning={true} />
+                                    )}
+                                </div>
                             </div>
                             {/* Status badges */}
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0">
                                 {isMaintenance ? (
-                                    <span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[10px] font-bold">Perbaikan</span>
+                                    <span className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold shadow-sm">Perbaikan</span>
                                 ) : isOffline ? (
-                                    <span className="px-1.5 py-0.5 rounded bg-gray-500 text-white text-[10px] font-bold">Offline</span>
+                                    <span className="px-2.5 py-1 rounded-lg bg-gray-500 text-white text-xs font-bold shadow-sm">Offline</span>
                                 ) : (
                                     <>
-                                        <span className={`w-1.5 h-1.5 rounded-full bg-red-500 ${disableAnimations ? '' : 'animate-pulse'}`}/>
-                                        <span className={`px-1.5 py-0.5 rounded text-white text-[10px] font-bold ${camera.is_tunnel ? 'bg-orange-500' : 'bg-emerald-500'}`}>
+                                        <span className={`w-2 h-2 rounded-full bg-red-500 ${disableAnimations ? '' : 'animate-pulse'}`}/>
+                                        <span className={`px-2.5 py-1 rounded-lg text-white text-xs font-bold shadow-sm ${camera.is_tunnel ? 'bg-orange-500' : 'bg-emerald-500'}`}>
                                             {camera.is_tunnel ? 'Tunnel' : 'Stabil'}
                                         </span>
                                     </>
@@ -1310,13 +1310,13 @@ function VideoPopup({ camera, onClose }) {
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {status === 'live' && <button onClick={takeSnapshot} className="p-2 hover:bg-gray-700/50 dark:hover:bg-white/20 active:bg-gray-700/70 dark:active:bg-white/30 rounded-xl text-gray-900 dark:text-white bg-gray-200/80 dark:bg-white/10"><Icons.Image /></button>}
-                                        <button onClick={toggleFS} className="p-2 hover:bg-gray-700/50 dark:hover:bg-white/20 active:bg-gray-700/70 dark:active:bg-white/30 rounded-xl text-gray-900 dark:text-white bg-gray-200/80 dark:bg-white/10">
+                                        {status === 'live' && <button onClick={takeSnapshot} className="p-2.5 hover:bg-gray-700/60 dark:hover:bg-white/25 active:scale-95 rounded-xl text-gray-900 dark:text-white bg-gray-200/90 dark:bg-white/15 transition-all duration-200 shadow-lg backdrop-blur-sm"><Icons.Image /></button>}
+                                        <button onClick={toggleFS} className="p-2.5 hover:bg-gray-700/60 dark:hover:bg-white/25 active:scale-95 rounded-xl text-gray-900 dark:text-white bg-gray-200/90 dark:bg-white/15 transition-all duration-200 shadow-lg backdrop-blur-sm">
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
                                             </svg>
                                         </button>
-                                        <button onClick={handleClose} className="p-2 hover:bg-gray-700/50 dark:hover:bg-white/20 active:bg-gray-700/70 dark:active:bg-white/30 rounded-xl text-gray-900 dark:text-white bg-gray-200/80 dark:bg-white/10"><Icons.X /></button>
+                                        <button onClick={handleClose} className="p-2.5 hover:bg-red-500/80 dark:hover:bg-red-500/80 active:scale-95 rounded-xl text-gray-900 dark:text-white bg-gray-200/90 dark:bg-white/15 hover:text-white transition-all duration-200 shadow-lg backdrop-blur-sm"><Icons.X /></button>
                                     </div>
                                 </div>
                                 {/* Codec info detail - fullscreen mode */}

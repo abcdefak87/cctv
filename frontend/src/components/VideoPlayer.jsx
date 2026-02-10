@@ -10,9 +10,9 @@ import { LoadingStage, getStageMessage, createStreamError } from '../utils/strea
 import { createFallbackHandler } from '../utils/fallbackHandler';
 
 /**
- * Optimized VideoPlayer Component
+ * Optimized VideoPlayer Component with Object Detection
  * Integrates device-adaptive HLS configuration, error recovery, visibility-based stream control,
- * loading timeout detection, progressive loading stages, and auto-retry functionality.
+ * loading timeout detection, progressive loading stages, auto-retry functionality, and AI object detection.
  */
 const VideoPlayer = memo(({ camera, streams, onExpand, isExpanded, enableZoom = false }) => {
     const videoRef = useRef(null);
@@ -48,7 +48,7 @@ const VideoPlayer = memo(({ camera, streams, onExpand, isExpanded, enableZoom = 
     // Consecutive failure tracking
     const [consecutiveFailures, setConsecutiveFailures] = useState(0);
     const [showTroubleshooting, setShowTroubleshooting] = useState(false);
-
+    
     // Visibility state
     const [isVisible, setIsVisible] = useState(true);
     const [isPausedByVisibility, setIsPausedByVisibility] = useState(false);
@@ -901,6 +901,7 @@ const VideoPlayer = memo(({ camera, streams, onExpand, isExpanded, enableZoom = 
                     </button>
                 </div>
             </div>
+
 
             {/* Loading state with progressive feedback - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5** */}
             {status === 'loading' && showSpinner && (
