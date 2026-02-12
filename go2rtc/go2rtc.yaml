@@ -1,0 +1,23 @@
+# go2rtc Configuration for RAF NET CCTV
+# Proper configuration based on official documentation
+
+streams:
+  # Camera streams (managed dynamically, but need at least one for testing)
+  test-1770912700: rtsp://admin:Smansada1@103.118.175.245:556/Streaming/Channels/101
+
+# API and Web UI
+api:
+  listen: ":1984"
+
+# RTSP server (for restreaming)
+rtsp:
+  listen: ":8554"
+
+# WebRTC (low latency)
+webrtc:
+  listen: ":8555"
+
+# Logging
+log:
+  level: info
+

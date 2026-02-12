@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/abcdefak87/cctv/internal/config"
 	"github.com/gofiber/fiber/v2"
@@ -54,13 +55,15 @@ func (h *StreamHandler) GetStreamURL(c *fiber.Ctx) error {
 		})
 	}
 
-	// Build stream URLs using public base URL from config
-	baseURL := h.cfg.MediaMTX.PublicStreamBaseURL
+	// Build stream URLs - prioritize MSE (works without HLS module)
+	baseURL := h.cfg.Go2RTC.PublicStreamBaseURL
 	if baseURL == "" {
-		// Fallback to request base URL if not configured
 		baseURL = c.BaseURL()
 	}
-	hlsURL := fmt.Sprintf("%s/api/stream/hls/%s/index.m3u8", baseURL, streamKey)
+	
+	// Use MSE as HLS URL (frontend expects hls_url field)
+	// MSE works with native HTML5 video, no HLS.js needed
+	hlsURL := fmt.Sprintf("%s/api/stream/mse/%s", baseURL, streamKey)
 	webrtcURL := fmt.Sprintf("%s/api/stream/webrtc/%s", baseURL, streamKey)
 
 	return c.JSON(fiber.Map{
@@ -69,13 +72,13 @@ func (h *StreamHandler) GetStreamURL(c *fiber.Ctx) error {
 			"camera_id":  cameraID,
 			"name":       name,
 			"stream_key": streamKey,
-			"hls_url":    hlsURL,
+			"hls_url":    hlsURL,  // Actually MSE, but frontend expects this field
 			"webrtc_url": webrtcURL,
 		},
 	})
 }
 
-// ProxyHLS - Proxy HLS stream from MediaMTX
+// ProxyHLS - Proxy HLS stream from go2rtc
 func (h *StreamHandler) ProxyHLS(c *fiber.Ctx) error {
 	streamKey := c.Params("streamKey")
 	file := c.Params("*")
@@ -94,27 +97,88 @@ func (h *StreamHandler) ProxyHLS(c *fiber.Ctx) error {
 		return c.Status(403).SendString("Camera is disabled")
 	}
 
-	// Proxy request to MediaMTX
-	mediamtxURL := fmt.Sprintf("http://localhost:8888/%s/%s", streamKey, file)
+	// Proxy request to go2rtc API
+	var go2rtcURL string
+	if file == "index.m3u8" {
+		// Master playlist
+		go2rtcURL = fmt.Sprintf("http://localhost:1984/api/stream.m3u8?src=%s", streamKey)
+	} else {
+		// Sub-playlists and segments - go2rtc uses /api/hls/... format
+		go2rtcURL = fmt.Sprintf("http://localhost:1984/api/%s", file)
+	}
 
-	resp, err := http.Get(mediamtxURL)
+	resp, err := http.Get(go2rtcURL)
 	if err != nil {
 		return c.Status(502).SendString("Failed to connect to stream server")
 	}
 	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return c.Status(502).SendString("Failed to read stream")
+	}
+
+	// For master playlist, rewrite relative URLs to absolute
+	if file == "index.m3u8" {
+		content := string(body)
+		// Replace relative path with absolute URL
+		baseURL := h.cfg.Go2RTC.PublicStreamBaseURL
+		if baseURL == "" {
+			baseURL = c.BaseURL()
+		}
+		content = strings.ReplaceAll(content, "hls/playlist.m3u8", 
+			fmt.Sprintf("%s/api/stream/hls/%s/hls/playlist.m3u8", baseURL, streamKey))
+		body = []byte(content)
+	}
 
 	// Set appropriate headers
 	c.Set("Content-Type", resp.Header.Get("Content-Type"))
 	c.Set("Cache-Control", "no-cache")
 	c.Status(resp.StatusCode)
 
-	// Stream the response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return c.Status(502).SendString("Failed to read stream")
+	return c.Send(body)
+}
+
+// ProxyMSE - Proxy MSE/MP4 stream from go2rtc
+func (h *StreamHandler) ProxyMSE(c *fiber.Ctx) error {
+	streamKey := c.Params("streamKey")
+
+	// Verify camera exists and is enabled
+	var enabled bool
+	err := h.db.QueryRow(`
+		SELECT enabled FROM cameras WHERE stream_key = ?
+	`, streamKey).Scan(&enabled)
+
+	if err == sql.ErrNoRows {
+		return c.Status(404).SendString("Camera not found")
 	}
 
-	return c.Send(body)
+	if !enabled {
+		return c.Status(403).SendString("Camera is disabled")
+	}
+
+	// Proxy to go2rtc MSE endpoint
+	go2rtcURL := fmt.Sprintf("http://localhost:1984/api/stream.mp4?src=%s", streamKey)
+
+	resp, err := http.Get(go2rtcURL)
+	if err != nil {
+		return c.Status(502).SendString("Failed to connect to stream server")
+	}
+	defer resp.Body.Close()
+
+	// Set headers for MSE streaming
+	c.Set("Content-Type", "video/mp4")
+	c.Set("Cache-Control", "no-cache")
+	c.Status(resp.StatusCode)
+
+	// Stream the response
+	_, err = io.Copy(c.Response().BodyWriter(), resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetStreamStats - Get stream statistics
@@ -260,7 +324,7 @@ func (h *StreamHandler) GetAllStreams(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	streams := []map[string]interface{}{}
-	baseURL := h.cfg.MediaMTX.PublicStreamBaseURL
+	baseURL := h.cfg.Go2RTC.PublicStreamBaseURL
 	if baseURL == "" {
 		baseURL = c.BaseURL()
 	}

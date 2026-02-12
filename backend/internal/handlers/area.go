@@ -20,7 +20,7 @@ func NewAreaHandler(db *sql.DB, cfg *config.Config) *AreaHandler {
 // GetAllAreas - Get all areas
 func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
 	rows, err := h.db.Query(`
-		SELECT id, name, description, created_at, updated_at
+		SELECT id, name, description, rt, rw, kelurahan, kecamatan, created_at
 		FROM areas
 		ORDER BY name ASC
 	`)
@@ -35,10 +35,10 @@ func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
 	areas := []map[string]interface{}{}
 	for rows.Next() {
 		var id int
-		var name, description string
-		var createdAt, updatedAt time.Time
+		var name, description, rt, rw, kelurahan, kecamatan string
+		var createdAt time.Time
 
-		err := rows.Scan(&id, &name, &description, &createdAt, &updatedAt)
+		err := rows.Scan(&id, &name, &description, &rt, &rw, &kelurahan, &kecamatan, &createdAt)
 		if err != nil {
 			continue
 		}
@@ -47,8 +47,11 @@ func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
 			"id":          id,
 			"name":        name,
 			"description": description,
+			"rt":          rt,
+			"rw":          rw,
+			"kelurahan":   kelurahan,
+			"kecamatan":   kecamatan,
 			"created_at":  createdAt,
-			"updated_at":  updatedAt,
 		})
 	}
 

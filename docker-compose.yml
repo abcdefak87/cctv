@@ -3,13 +3,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001
+        VITE_FRONTEND_DOMAIN: localhost
     container_name: rafnet-cctv
     restart: unless-stopped
     ports:
       - "3001:3001"    # Backend API (Golang)
-      - "8888:8888"    # MediaMTX HLS
-      - "8889:8889"    # MediaMTX WebRTC
-      - "9997:9997"    # MediaMTX API
+      - "8888:8888"    # go2rtc HLS
+      - "8555:8555"    # go2rtc WebRTC
+      - "1984:1984"    # go2rtc API
     volumes:
       # Persistent data
       - ./backend/data:/app/backend/data
@@ -17,7 +20,7 @@ services:
       - ./logs:/app/logs
       # Configuration (can be edited without rebuild)
       - ./backend/.env:/app/backend/.env:ro
-      - ./mediamtx/mediamtx.yml:/app/mediamtx/mediamtx.yml:ro
+      - ./go2rtc/go2rtc.yaml:/app/go2rtc/go2rtc.yaml:ro
       # Share frontend dist with nginx
       - frontend-dist:/app/frontend/dist
     environment:
@@ -41,7 +44,7 @@ services:
       - "8090:80"      # Public HTTP
       - "8443:443"     # Public HTTPS (if SSL enabled)
     volumes:
-      - ./frontend/dist:/usr/share/nginx/html:ro
+      - frontend-dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - cctv-app

@@ -21,11 +21,12 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o 
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
+# Build arguments for environment variables
+ARG VITE_API_URL=http://localhost:3001
+ARG VITE_FRONTEND_DOMAIN=localhost
+
 # Copy package files
 COPY frontend/package*.json ./
-
-# Copy .env BEFORE npm install so Vite can read it
-COPY frontend/.env* ./
 
 # Install dependencies
 RUN npm install
@@ -33,16 +34,15 @@ RUN npm install
 # Copy rest of frontend files
 COPY frontend/ ./
 
+# Create .env file from build args
+RUN echo "VITE_API_URL=${VITE_API_URL}" > .env && \
+    echo "VITE_FRONTEND_DOMAIN=${VITE_FRONTEND_DOMAIN}" >> .env
+
 # Build with environment variables
 RUN npm run build
 
-# MediaMTX download stage
-FROM alpine:latest AS mediamtx-downloader
-RUN apk add --no-cache wget tar
-WORKDIR /tmp
-RUN wget https://github.com/bluenviron/mediamtx/releases/download/v1.9.0/mediamtx_v1.9.0_linux_amd64.tar.gz && \
-    tar -xzf mediamtx_v1.9.0_linux_amd64.tar.gz && \
-    chmod +x mediamtx
+# go2rtc from official image
+FROM alexxit/go2rtc:latest AS go2rtc-image
 
 # Final production image
 FROM alpine:latest
@@ -53,22 +53,22 @@ RUN apk --no-cache add ca-certificates sqlite-libs tzdata ffmpeg
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server ./backend/server
-COPY backend/.env.example ./backend/.env
+COPY backend/.env ./backend/.env
 
 # Copy frontend build
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Copy MediaMTX
-COPY --from=mediamtx-downloader /tmp/mediamtx ./mediamtx/mediamtx
-COPY mediamtx/mediamtx.yml ./mediamtx/mediamtx.yml
+# Copy go2rtc
+COPY --from=go2rtc-image /usr/local/bin/go2rtc ./go2rtc/go2rtc
+COPY go2rtc/go2rtc.yaml ./go2rtc/go2rtc.yaml
 
 # Create necessary directories
 RUN mkdir -p backend/data recordings logs && \
     chmod 755 recordings && \
-    chmod +x backend/server mediamtx/mediamtx
+    chmod +x backend/server go2rtc/go2rtc
 
 # Expose ports
-EXPOSE 3001 8888 8889 9997
+EXPOSE 3001 8888 8555 1984
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

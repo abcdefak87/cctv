@@ -49,9 +49,9 @@ frontend/build/
 .DS_Store
 Thumbs.db
 
-# MediaMTX
-mediamtx/recordings/
-mediamtx/logs/
+# go2rtc
+go2rtc/go2rtc
+go2rtc/logs/
 
 # Temporary files
 tmp/

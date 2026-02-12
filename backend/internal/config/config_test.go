@@ -86,23 +86,23 @@ func TestLoadConfig(t *testing.T) {
 		os.Clearenv()
 	})
 
-	t.Run("MediaMTX config", func(t *testing.T) {
-		os.Setenv("MEDIAMTX_API_URL", "http://mediamtx:9997")
-		os.Setenv("MEDIAMTX_HLS_URL_INTERNAL", "http://mediamtx:8888")
+	t.Run("Go2RTC config", func(t *testing.T) {
+		os.Setenv("GO2RTC_API_URL", "http://go2rtc:1984")
+		os.Setenv("GO2RTC_HLS_URL_INTERNAL", "http://go2rtc:8888")
 		os.Setenv("PUBLIC_HLS_PATH", "/streams/hls")
 
 		cfg := Load()
 
-		if cfg.MediaMTX.APIURL != "http://mediamtx:9997" {
-			t.Errorf("Expected MediaMTX API URL 'http://mediamtx:9997', got '%s'", cfg.MediaMTX.APIURL)
+		if cfg.Go2RTC.APIURL != "http://go2rtc:1984" {
+			t.Errorf("Expected Go2RTC API URL 'http://go2rtc:1984', got '%s'", cfg.Go2RTC.APIURL)
 		}
 
-		if cfg.MediaMTX.HLSURLInternal != "http://mediamtx:8888" {
-			t.Errorf("Expected HLS URL 'http://mediamtx:8888', got '%s'", cfg.MediaMTX.HLSURLInternal)
+		if cfg.Go2RTC.HLSURLInternal != "http://go2rtc:8888" {
+			t.Errorf("Expected HLS URL 'http://go2rtc:8888', got '%s'", cfg.Go2RTC.HLSURLInternal)
 		}
 
-		if cfg.MediaMTX.HLSURLPublic != "/streams/hls" {
-			t.Errorf("Expected public HLS path '/streams/hls', got '%s'", cfg.MediaMTX.HLSURLPublic)
+		if cfg.Go2RTC.HLSURLPublic != "/streams/hls" {
+			t.Errorf("Expected public HLS path '/streams/hls', got '%s'", cfg.Go2RTC.HLSURLPublic)
 		}
 
 		// Cleanup

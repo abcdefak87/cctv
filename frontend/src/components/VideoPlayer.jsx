@@ -27,6 +27,7 @@ const VideoPlayer = memo(({ camera, streams, onExpand, isExpanded, enableZoom = 
     const loadingTimeoutHandlerRef = useRef(null);
     const fallbackHandlerRef = useRef(null);
     const abortControllerRef = useRef(null);
+    const useMSE = useRef(false); // Flag for MSE vs HLS
     
     // Device capabilities - detected once on mount
     const [deviceTier, setDeviceTier] = useState('medium');
@@ -377,8 +378,71 @@ const VideoPlayer = memo(({ camera, streams, onExpand, isExpanded, enableZoom = 
                     mobileDeviceType: deviceCapabilities.mobileDeviceType,
                 });
 
-                // Try HLS first
-                if (Hls.isSupported() && streams.hls) {
+                // Check if URL is MSE (MP4) or HLS (m3u8)
+                const isMSE = streams.hls && (streams.hls.includes('/mse/') || streams.hls.endsWith('.mp4'));
+                
+                // Use native video for MSE, HLS.js for HLS
+                if (isMSE || !Hls.isSupported()) {
+                    // Native MSE playback
+                    useMSE.current = true;
+                    video.src = streams.hls;
+                    video.load();
+                    
+                    video.addEventListener('loadedmetadata', () => {
+                        if (isDestroyed) return;
+                        setLoadingStage(LoadingStage.BUFFERING);
+                        if (loadingTimeoutHandlerRef.current) {
+                            loadingTimeoutHandlerRef.current.updateStage(LoadingStage.BUFFERING);
+                        }
+                    });
+                    
+                    video.addEventListener('canplay', () => {
+                        if (isDestroyed) return;
+                        setLoadingStage(LoadingStage.STARTING);
+                        if (loadingTimeoutHandlerRef.current) {
+                            loadingTimeoutHandlerRef.current.updateStage(LoadingStage.STARTING);
+                        }
+                        
+                        video.play().then(() => {
+                            if (isDestroyed) return;
+                            setStatus('playing');
+                            setLoadingStage(LoadingStage.PLAYING);
+                            setRetryCount(0);
+                            setAutoRetryCount(0);
+                            setShowSpinner(false);
+                            setConsecutiveFailures(0);
+                            
+                            if (loadingTimeoutHandlerRef.current) {
+                                loadingTimeoutHandlerRef.current.clearTimeout();
+                                loadingTimeoutHandlerRef.current.resetFailures();
+                            }
+                            if (fallbackHandlerRef.current) {
+                                fallbackHandlerRef.current.reset();
+                            }
+                            if (errorRecoveryRef.current) {
+                                errorRecoveryRef.current.reset();
+                            }
+                        }).catch((err) => {
+                            if (isDestroyed) return;
+                            console.error('MSE play error:', err);
+                            setStatus('error');
+                            setLoadingStage(LoadingStage.ERROR);
+                            setError('Failed to play video');
+                            setShowSpinner(false);
+                        });
+                    });
+                    
+                    video.addEventListener('error', (e) => {
+                        if (isDestroyed) return;
+                        console.error('MSE error:', e);
+                        setStatus('error');
+                        setLoadingStage(LoadingStage.ERROR);
+                        setError('Video playback error');
+                        setShowSpinner(false);
+                    });
+                } else if (Hls.isSupported() && streams.hls) {
+                    // HLS.js playback
+                    useMSE.current = false;
                     hls = new Hls(hlsConfig);
                     hlsRef.current = hls;
 

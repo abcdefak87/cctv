@@ -41,7 +41,7 @@ A secure, high-performance video streaming system that isolates private IP camer
 ## 🏗️ Architecture
 
 ```
-Public User → Frontend (React) → Backend (Fastify) → MediaMTX → Private RTSP Cameras
+Public User → Frontend (React) → Backend (Golang) → go2rtc → Private RTSP Cameras
 Admin User → Admin Panel → JWT Auth → API → SQLite Database
 Recording → FFmpeg → MP4 Segments → Playback API → Video Player
 ```
@@ -63,9 +63,9 @@ Recording → FFmpeg → MP4 Segments → Playback API → Video Player
 - Leaflet 1.9.4 (maps)
 
 **Streaming:**
-- MediaMTX v1.9.0 (RTSP to HLS)
+- go2rtc v1.9.3 (RTSP to HLS/WebRTC)
 - HLS streaming (HTTP Live Streaming)
-- WebRTC support (optional)
+- WebRTC support (low latency)
 
 ## 📋 Prerequisites
 
@@ -91,11 +91,11 @@ bash aapanel-install.sh
 ```
 
 **What it does:**
-- Installs Node.js 20, PM2, FFmpeg
+- Installs Golang 1.21+, FFmpeg
 - Clones repository
 - Sets up backend (database, .env)
 - Builds frontend
-- Downloads MediaMTX
+- Downloads go2rtc
 - Configures Nginx
 - Starts all services
 
@@ -130,13 +130,12 @@ npm install
 npm run build
 ```
 
-#### 4. MediaMTX Setup
+#### 4. go2rtc Setup
 
 ```bash
-cd mediamtx
-wget https://github.com/bluenviron/mediamtx/releases/download/v1.9.0/mediamtx_v1.9.0_linux_amd64.tar.gz
-tar -xzf mediamtx_v1.9.0_linux_amd64.tar.gz
-chmod +x mediamtx
+cd go2rtc
+wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_amd64 -O go2rtc
+chmod +x go2rtc
 ```
 
 #### 5. Start Services
@@ -212,11 +211,11 @@ CSRF_SECRET=<32-char-hex>
 ALLOWED_ORIGINS=
 
 # ===================================
-# MediaMTX (Internal)
+# go2rtc (Internal)
 # ===================================
-MEDIAMTX_API_URL=http://localhost:9997
-MEDIAMTX_HLS_URL_INTERNAL=http://localhost:8888
-MEDIAMTX_WEBRTC_URL_INTERNAL=http://localhost:8889
+GO2RTC_API_URL=http://localhost:1984
+GO2RTC_HLS_URL_INTERNAL=http://localhost:8888
+WEBRTC_URL_INTERNAL=http://localhost:8889
 
 # ===================================
 # Other Settings
@@ -274,27 +273,26 @@ ALLOWED_ORIGINS=
 - ✅ Automatic CORS configuration
 - ✅ Dynamic meta tags in HTML
 
-### MediaMTX (mediamtx.yml)
+### go2rtc (go2rtc.yaml)
 
 ```yaml
-logLevel: info
-api: yes
-apiAddress: :9997
+api:
+  listen: ":1984"
 
-hls: yes
-hlsAddress: :8888
-hlsAlwaysRemux: yes
-hlsAllowOrigin: '*'
-hlsDirectory: /dev/shm/mediamtx-live  # RAM disk for performance
+hls:
+  listen: ":8888"
 
-webrtc: yes
-webrtcAddress: :8889
-webrtcAllowOrigin: '*'
+webrtc:
+  listen: ":8555/tcp"
 
-paths:
-  all_others:
-    source: publisher
-    sourceOnDemand: yes
+rtsp:
+  listen: ":8554"
+
+log:
+  level: info
+
+streams:
+  # Managed dynamically by backend
 ```
 
 ## 🔐 Security
@@ -321,7 +319,7 @@ paths:
 
 - RTSP URLs stored server-side only
 - Frontend never receives RTSP URLs
-- MediaMTX ingests from private network
+- go2rtc ingests from private network
 - Only HLS streams exposed publicly
 
 ## 📁 Project Structure
@@ -347,9 +345,9 @@ rafnet-cctv/
 │   │   ├── services/     # API clients
 │   │   └── utils/        # Video player utilities
 │   └── dist/             # Build output
-├── mediamtx/             # Streaming server
-│   ├── mediamtx          # Binary
-│   └── mediamtx.yml      # Configuration
+├── go2rtc/               # Streaming server
+│   ├── go2rtc            # Binary
+│   └── go2rtc.yaml       # Configuration
 ├── deployment/           # Deployment configs
 │   ├── nginx.conf        # Nginx config
 │   └── ...
@@ -400,7 +398,7 @@ cd /var/www/cctv
 
 ```bash
 pm2 logs cctv-backend
-pm2 logs cctv-mediamtx
+pm2 logs cctv-go2rtc
 tail -f /var/log/nginx/cctv-backend.error.log
 ```
 
@@ -408,7 +406,7 @@ tail -f /var/log/nginx/cctv-backend.error.log
 
 ```bash
 pm2 restart cctv-backend
-pm2 restart cctv-mediamtx
+pm2 restart cctv-go2rtc
 systemctl reload nginx
 ```
 
@@ -515,9 +513,9 @@ pm2 restart cctv-backend
 ### Stream not loading
 
 ```bash
-# Check MediaMTX
-curl http://localhost:9997/v3/paths/list
-pm2 logs cctv-mediamtx
+# Check go2rtc
+curl http://localhost:1984/api
+pm2 logs cctv-go2rtc
 
 # Check HLS proxy
 curl http://localhost:8888/camera1/index.m3u8
@@ -539,8 +537,10 @@ sqlite3 /var/www/cctv/backend/data/cctv.db "SELECT * FROM cameras WHERE enable_r
 ## 📚 Documentation
 
 - **Deployment:** [deployment/AAPANEL_QUICK_SETUP.md](deployment/AAPANEL_QUICK_SETUP.md)
+- **Migration to go2rtc:** [MIGRATION_GO2RTC.md](MIGRATION_GO2RTC.md)
+- **go2rtc Quick Reference:** [GO2RTC_QUICKREF.md](GO2RTC_QUICKREF.md)
 - **Security:** [SECURITY.md](SECURITY.md)
-- **Steering Rules:** [.kiro/steering/](. kiro/steering/)
+- **Steering Rules:** [.kiro/steering/](.kiro/steering/)
 
 ## 🤝 Contributing
 

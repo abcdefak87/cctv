@@ -88,6 +88,7 @@ func Setup(app *fiber.App, db *sql.DB, cfg *config.Config) {
 	stream.Get("/", streamHandler.GetAllStreams) // List all active streams
 	stream.Get("/:streamKey", streamHandler.GetStreamURL) // Public
 	stream.Get("/hls/:streamKey/*", streamHandler.ProxyHLS) // Public - HLS proxy
+	stream.Get("/mse/:streamKey", streamHandler.ProxyMSE) // Public - MSE/MP4 proxy
 	stream.Get("/:streamKey/stats", streamHandler.GetStreamStats) // Public
 	stream.Post("/:streamKey/start", streamHandler.StartViewing) // Public
 	stream.Post("/:streamKey/stop", streamHandler.StopViewing) // Public

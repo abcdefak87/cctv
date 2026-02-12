@@ -3,13 +3,13 @@ set -e
 
 echo "Starting RAF NET CCTV Services..."
 
-# Start MediaMTX in background
-echo "Starting MediaMTX..."
-cd /app/mediamtx
-./mediamtx mediamtx.yml &
-MEDIAMTX_PID=$!
+# Start go2rtc in background
+echo "Starting go2rtc..."
+cd /app/go2rtc
+./go2rtc -config go2rtc.yaml &
+GO2RTC_PID=$!
 
-# Wait for MediaMTX to start
+# Wait for go2rtc to start
 sleep 3
 
 # Start Backend
@@ -19,7 +19,7 @@ cd /app/backend
 BACKEND_PID=$!
 
 echo "All services started!"
-echo "MediaMTX PID: $MEDIAMTX_PID"
+echo "go2rtc PID: $GO2RTC_PID"
 echo "Backend PID: $BACKEND_PID"
 
 # Wait for any process to exit

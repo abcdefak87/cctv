@@ -13,7 +13,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	Security SecurityConfig
-	MediaMTX MediaMTXConfig
+	Go2RTC Go2RTCConfig
 }
 
 type ServerConfig struct {
@@ -41,7 +41,7 @@ type SecurityConfig struct {
 	LockoutDurationMins  int
 }
 
-type MediaMTXConfig struct {
+type Go2RTCConfig struct {
 	APIURL              string
 	HLSURLInternal      string
 	HLSURLPublic        string
@@ -76,9 +76,9 @@ func Load() *Config {
 			MaxLoginAttempts:    getEnvInt("MAX_LOGIN_ATTEMPTS", 5),
 			LockoutDurationMins: getEnvInt("LOCKOUT_DURATION_MINUTES", 30),
 		},
-		MediaMTX: MediaMTXConfig{
-			APIURL:              getEnv("MEDIAMTX_API_URL", "http://localhost:9997"),
-			HLSURLInternal:      getEnv("MEDIAMTX_HLS_URL_INTERNAL", "http://localhost:8888"),
+		Go2RTC: Go2RTCConfig{
+			APIURL:              getEnv("GO2RTC_API_URL", "http://localhost:1984"),
+			HLSURLInternal:      getEnv("GO2RTC_HLS_URL_INTERNAL", "http://localhost:8888"),
 			HLSURLPublic:        getEnv("PUBLIC_HLS_PATH", "/hls"),
 			PublicStreamBaseURL: getEnv("PUBLIC_STREAM_BASE_URL", "http://localhost:8090"),
 		},

@@ -64,6 +64,17 @@ func RunMigrations(db *sql.DB) error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE SET NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS viewer_sessions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			camera_id INTEGER NOT NULL,
+			session_id TEXT NOT NULL,
+			ip_address TEXT,
+			user_agent TEXT,
+			started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			ended_at DATETIME,
+			FOREIGN KEY (camera_id) REFERENCES cameras(id) ON DELETE CASCADE,
+			UNIQUE(camera_id, session_id)
+		)`,
 		`CREATE TABLE IF NOT EXISTS audit_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER,
